@@ -7,8 +7,8 @@ LIBS = -lSDL2_mixer -lSDL2_image -lSDL2 -lpng -lwebp -ljpeg -lmikmod -lz -lm -lv
   -lcrypto -lFLAC -lopenal -limgui -lvitaGL -lvitashark -lSceShaccCgExt -lmathneon -lopus \
   -lmpg123 -ltaihen_stub -lkubridge_stub -lSceAppMgr_stub -lSceAppUtil_stub -lSceAudio_stub \
   -lSceAudioIn_stub -lSceCtrl_stub -lSceCommonDialog_stub -lSceDisplay_stub -lSceFios2_stub \
-  -lSceGxm_stub -lSceLibcBridge_stub -lSceShaccCg_stub -lSceSysmodule_stub -lScePower_stub \
-  -lSceTouch_stub -lSceMotion_stub -lSceHid_stub -lSceVshBridge_stub -lSceKernelDmacmgr_stub
+  -lSceGxm_stub -lSceLibKernel_stub -lSceShaccCg_stub -lSceSysmodule_stub -lScePower_stub \
+  -lSceTouch_stub -lSceMotion_stub -lSceHid_stub -lSceVshBridge_stub -lSceKernelDmacMgr_stub
 
 CFILES   := $(foreach dir,$(SOURCES), $(wildcard $(dir)/*.c))
 CPPFILES   := $(foreach dir,$(SOURCES), $(wildcard $(dir)/*.cpp))
@@ -18,10 +18,13 @@ OBJS     := $(addsuffix .o,$(BINFILES)) $(CFILES:.c=.o) $(CPPFILES:.cpp=.o)
 PREFIX  = arm-vita-eabi
 CC      = $(PREFIX)-gcc
 CXX      = $(PREFIX)-g++
-CFLAGS  = -g -Wl,-q,--wrap,fopen,--wrap,mkdir -O3 -ffast-math -DSTBI_NO_THREAD_LOCALS \
+# Keep the source language used before the compiler default changed to C23.
+CFLAGS  = -std=gnu17 -g -Wl,-q,--wrap,fopen,--wrap,mkdir -O3 -ffast-math -DSTBI_NO_THREAD_LOCALS \
 	-I$(VITASDK)/$(PREFIX)/include/SDL2 -fno-tree-vectorize -DNDEBUG -I../..
-CXXFLAGS  = $(CFLAGS) -fno-exceptions -std=gnu++11 -fpermissive
+CXXFLAGS  = $(filter-out -std=gnu17,$(CFLAGS)) -fno-exceptions -std=gnu++11 -fpermissive
 ASFLAGS = $(CFLAGS)
+# Reserve room for SCE import metadata between load segments.
+LDFLAGS += -Wl,--defsym=__sce_headroom=0x10000
 
 all: $(TARGET).vpk
 
@@ -42,7 +45,7 @@ $(TARGET).vpk: $(TARGET).velf
 	vita-elf-create $< $@
 
 $(TARGET).elf: $(OBJS)
-	$(CXX) $(CXXFLAGS) $^ $(LIBS) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
 clean:
 	@rm -rf $(TARGET).velf $(TARGET).elf $(TARGET).sysvelf $(OBJS)

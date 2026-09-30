@@ -39,6 +39,9 @@ long sysconf(int name) {
 
 int _newlib_heap_size_user = 128 * 1024 * 1024;
 
+int __real_mkdir(const char *path, mode_t mode);
+FILE *__real_fopen(const char *path, const char *mode);
+
 int __wrap_mkdir(const char *fname, mode_t mode) {
 	printf("mkdir %s\n", fname);
 	char patched_fname[256];
